@@ -3,7 +3,7 @@
 # 3. Призначення: Задати схему таблиць, типи колонок, первинні/зовнішні ключі та зв'язки між сутностями.
 
 
-from sqlalchemy import Column, Integer, String, Float, ForeignKey
+from sqlalchemy import Column, Integer, String, Float, ForeignKey, Text
 from sqlalchemy.orm import relationship
 from database import Base
 
@@ -12,21 +12,23 @@ class User(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     username = Column(String(50), unique=True, index=True, nullable=False)
-    role = Column(String(20), nullable=False, default="client") # client або admin
+    email = Column(String(100), unique=True, index=True, nullable=True)
+    phone = Column(String(20), unique=True, index=True, nullable=True)
+    password_hash = Column(String(255), nullable=False)
+    role = Column(String(20), default="client", nullable=False)  # 'client', 'employee', 'admin', 'superadmin'
 
-    # Зв'язок 1 до багатьох з Order
-    orders = relationship("Order", back_populates="user", cascade="all, delete-orphan")
+    # Зв'язок із замовленнями
+    orders = relationship("Order", back_populates="user")
 
 
 class Product(Base):
     __tablename__ = "products"
 
     id = Column(Integer, primary_key=True, index=True)
-    name = Column(String(100), index=True, nullable=False)
+    name = Column(String(100), nullable=False)
     price = Column(Float, nullable=False)
-    description = Column(String(255))
+    description = Column(Text, nullable=True)
 
-    # Зв'язок 1 до багатьох з OrderItem
     order_items = relationship("OrderItem", back_populates="product")
 
 
@@ -34,11 +36,10 @@ class Order(Base):
     __tablename__ = "orders"
 
     id = Column(Integer, primary_key=True, index=True)
-    status = Column(String(50), nullable=False, default="NewOrder") # Стартовий статус
-    total_price = Column(Float, nullable=False, default=0.0)
     user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    status = Column(String(50), default="NewOrder", nullable=False)
+    total_price = Column(Float, default=0.0, nullable=False)
 
-    # Зв'язки
     user = relationship("User", back_populates="orders")
     items = relationship("OrderItem", back_populates="order", cascade="all, delete-orphan")
 
@@ -49,8 +50,7 @@ class OrderItem(Base):
     id = Column(Integer, primary_key=True, index=True)
     order_id = Column(Integer, ForeignKey("orders.id"), nullable=False)
     product_id = Column(Integer, ForeignKey("products.id"), nullable=False)
-    quantity = Column(Integer, nullable=False, default=1)
+    quantity = Column(Integer, default=1, nullable=False)
 
-    # Зв'язки
     order = relationship("Order", back_populates="items")
     product = relationship("Product", back_populates="order_items")
