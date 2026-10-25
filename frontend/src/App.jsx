@@ -1,40 +1,55 @@
-import { useEffect, useState } from 'react';
-import OrderList from './components/OrderList.jsx';
-import { getOrders } from './services/ordersService.js';
+import { useState } from 'react';
+import LoginView from './components/LoginView.jsx';
+import ClientCatalogView from './components/ClientCatalogView.jsx';
+import EmployeeOrdersView from './components/EmployeeOrdersView.jsx';
+import AdminProductsView from './components/AdminProductsView.jsx';
+import SuperAdminUsersView from './components/SuperAdminUsersView.jsx';
+import { logout, getCurrentUser } from './services/apiService.js';
+
+// Кожна роль бачить лише свій екран (RBAC на фронтенді).
+const VIEWS_BY_ROLE = {
+  client: ClientCatalogView,
+  employee: EmployeeOrdersView,
+  admin: AdminProductsView,
+  superadmin: SuperAdminUsersView,
+};
+
+const ROLE_LABELS = {
+  client: 'Клієнт',
+  employee: 'Працівник',
+  admin: 'Адміністратор',
+  superadmin: 'Головний адмін',
+};
 
 export default function App() {
-  const [orders, setOrders] = useState([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState('');
+  const [user, setUser] = useState(getCurrentUser());
 
-  useEffect(() => {
-    let isActive = true;
+  function handleLogout() {
+    logout();
+    setUser(null);
+  }
 
-    async function loadOrders() {
-      try {
-        const data = await getOrders();
-        if (isActive) setOrders(data);
-      } catch {
-        if (isActive) setError('Не вдалося завантажити замовлення.');
-      } finally {
-        if (isActive) setIsLoading(false);
-      }
-    }
+  // Не увійшли (або роль невідома) — показуємо форму входу.
+  if (!user || !VIEWS_BY_ROLE[user.role]) {
+    return <LoginView onLogin={setUser} />;
+  }
 
-    loadOrders();
-    return () => { isActive = false; };
-  }, []);
+  const View = VIEWS_BY_ROLE[user.role];
 
   return (
     <main className="app">
       <header className="page-header">
-        <p className="eyebrow">Sprint 1 · Опрацювання замовлень</p>
-        <h1>Замовлення</h1>
+        <p className="eyebrow">Пошта · {ROLE_LABELS[user.role]}</p>
+        <div className="header-row">
+          <h1>{ROLE_LABELS[user.role]}</h1>
+          <div>
+            <span className="muted">{user.username}</span>
+            <button type="button" onClick={handleLogout}>Вийти</button>
+          </div>
+        </div>
       </header>
 
-      {isLoading && <p role="status">Завантаження замовлень…</p>}
-      {error && <p role="alert" className="error">{error}</p>}
-      {!isLoading && !error && <OrderList orders={orders} />}
+      <View user={user} />
     </main>
   );
 }

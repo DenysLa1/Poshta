@@ -1,6 +1,19 @@
-import { STATUS_LABELS } from '../orderRules.js';
+import { STATUS_LABELS, canTransition } from '../orderRules.js';
 
-export default function OrderItem({ order }) {
+// Дозволені дії працівника для кожного статусу (порядок FSM).
+const ACTIONS = [
+  { status: 'Registered', label: 'Зареєструвати' },
+  { status: 'Granted', label: 'Погодити' },
+  { status: 'Shipped', label: 'Відправити' },
+  { status: 'Invoiced', label: 'Виставити рахунок' },
+  { status: 'Cancelled', label: 'Скасувати' },
+];
+
+export default function OrderItem({ order, onStatusChange }) {
+  const nextActions = ACTIONS.filter((action) =>
+    canTransition(order.status, action.status)
+  );
+
   return (
     <article className="order-card">
       <header className="order-header">
@@ -24,6 +37,20 @@ export default function OrderItem({ order }) {
         </ul>
       ) : (
         <p className="muted">Продуктів поки немає.</p>
+      )}
+
+      {nextActions.length > 0 && onStatusChange && (
+        <div className="order-actions">
+          {nextActions.map((action) => (
+            <button
+              key={action.status}
+              type="button"
+              onClick={() => onStatusChange(order.id, action.status)}
+            >
+              {action.label}
+            </button>
+          ))}
+        </div>
       )}
     </article>
   );

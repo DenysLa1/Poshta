@@ -9,7 +9,7 @@ export const STATUS_LABELS = {
 
 const ALLOWED_TRANSITIONS = {
   NewOrder: ['Registered', 'Cancelled'],
-  Registered: ['Granted', 'Shipped', 'Cancelled'],
+  Registered: ['Granted', 'Cancelled'],
   Granted: ['Shipped', 'Cancelled'],
   Shipped: ['Invoiced'],
   Invoiced: [],

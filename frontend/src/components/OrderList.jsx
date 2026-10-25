@@ -1,6 +1,6 @@
 import OrderItem from './OrderItem.jsx';
 
-export default function OrderList({ orders }) {
+export default function OrderList({ orders, onStatusChange }) {
   if (orders.length === 0) return <p>Замовлень поки немає.</p>;
 
   return (
@@ -9,7 +9,7 @@ export default function OrderList({ orders }) {
       <ul className="order-list">
         {orders.map((order) => (
           <li key={order.id}>
-            <OrderItem order={order} />
+            <OrderItem order={order} onStatusChange={onStatusChange} />
           </li>
         ))}
       </ul>
