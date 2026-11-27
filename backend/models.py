@@ -4,8 +4,19 @@
 
 
 from sqlalchemy import Column, Integer, String, Float, ForeignKey, Text
-from sqlalchemy.orm import relationship
+from sqlalchemy.orm import relationship, reconstructor
 from database import Base
+from fsm import (
+    OrderState,
+    NewOrder,
+    Registered,
+    Granted,
+    Shipped,
+    Invoiced,
+    Cancelled,
+    InvalidStateTransitionError,
+    get_state_for_order,
+)
 
 class User(Base):
     __tablename__ = "users"
@@ -18,7 +29,7 @@ class User(Base):
     role = Column(String(20), default="client", nullable=False)  # 'client', 'employee', 'admin', 'superadmin'
 
     # Зв'язок із замовленнями
-    orders = relationship("Order", back_populates="user")
+    orders = relationship("Order", back_populates="user", cascade="all, delete-orphan")
 
 
 class Product(Base):
@@ -42,6 +53,75 @@ class Order(Base):
 
     user = relationship("User", back_populates="orders")
     items = relationship("OrderItem", back_populates="order", cascade="all, delete-orphan")
+
+    def __init__(self, **kwargs):
+        if "status" not in kwargs or not kwargs["status"]:
+            kwargs["status"] = NewOrder.name
+        super().__init__(**kwargs)
+        self._state: OrderState = get_state_for_order(self)
+
+    @reconstructor
+    def _init_on_load(self) -> None:
+        """Відновлює об'єкт стану FSM під час завантаження запису з бази даних SQLAlchemy."""
+        self._state = get_state_for_order(self)
+
+    @property
+    def state(self) -> OrderState:
+        """Повертає актуальний екземпляр стану FSM, синхронізований із текстовим полем status."""
+        if not hasattr(self, "_state") or self._state is None or self._state.name != self.status:
+            self._state = get_state_for_order(self)
+        return self._state
+
+    def set_state(self, new_state: OrderState) -> None:
+        """Змінює стан об'єкта FSM та автоматично синхронізує текстове поле status у моделі БД."""
+        new_state.order = self
+        self._state = new_state
+        self.status = new_state.name
+
+    # Делегування викликів переходів поточному стану FSM
+    def register(self) -> None:
+        """Перевести замовлення у стан Registered (Зареєстроване)."""
+        self.state.register()
+
+    def grant(self) -> None:
+        """Перевести замовлення у стан Granted (Погоджене)."""
+        self.state.grant()
+
+    def ship(self) -> None:
+        """Перевести замовлення у стан Shipped (Відправлене)."""
+        self.state.ship()
+
+    def invoice(self) -> None:
+        """Перевести замовлення у стан Invoiced (Рахунок виставлено)."""
+        self.state.invoice()
+
+    def cancel(self) -> None:
+        """Перевести замовлення у стан Cancelled (Скасоване)."""
+        self.state.cancel()
+
+    def transition_to(self, target_status: str) -> None:
+        """Виконує перехід до цільового статусу через відповідний делегований метод FSM."""
+        actions = {
+            Registered.name: self.register,
+            Granted.name: self.grant,
+            Shipped.name: self.ship,
+            Invoiced.name: self.invoice,
+            Cancelled.name: self.cancel,
+        }
+        if target_status in actions:
+            actions[target_status]()
+        elif target_status == NewOrder.name:
+            if self.status in (Invoiced.name, Cancelled.name):
+                self.cancel()
+            raise InvalidStateTransitionError(
+                f"Порушення черговості кроків: неможливо повернути замовлення зі стану "
+                f"'{self.status}' у початковий стан 'NewOrder'."
+            )
+        else:
+            raise InvalidStateTransitionError(
+                f"Невідомий статус '{target_status}'. Дозволені цільові статуси: "
+                f"Registered, Granted, Shipped, Invoiced, Cancelled."
+            )
 
 
 class OrderItem(Base):

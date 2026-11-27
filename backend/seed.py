@@ -4,7 +4,8 @@
 
 
 from database import engine, SessionLocal, Base
-from models import User, Product
+from fsm import NewOrder, Registered, Granted, Shipped, Invoiced
+from models import User, Product, Order, OrderItem
 from security import get_password_hash
 
 def seed_database():
@@ -57,9 +58,51 @@ def seed_database():
             Product(name="USB-C Hub 8-in-1", price=1100.0, description="HDMI 4K, 3x USB 3.0, Gigabit Ethernet"),
         ]
         db.add_all(products)
+        db.flush()
+
+        # Додавання тестових замовлень у різних станах FSM для перевірки черги та фінансової статистики (/stats)
+        client_user = users[0]
+        order1 = Order(
+            user_id=client_user.id,
+            status=NewOrder.name,
+            total_price=round(products[0].price * 1 + products[1].price * 2, 2),
+        )
+        order2 = Order(
+            user_id=client_user.id,
+            status=Registered.name,
+            total_price=round(products[2].price * 1 + products[3].price * 1, 2),
+        )
+        order3 = Order(
+            user_id=client_user.id,
+            status=Invoiced.name,
+            total_price=round(products[0].price * 1 + products[2].price * 1, 2),
+        )
+        order4 = Order(
+            user_id=client_user.id,
+            status=Shipped.name,
+            total_price=round(products[1].price * 1 + products[3].price * 2, 2),
+        )
+        db.add_all([order1, order2, order3, order4])
+        db.flush()
+
+        order_items = [
+            OrderItem(order_id=order1.id, product_id=products[0].id, quantity=1),
+            OrderItem(order_id=order1.id, product_id=products[1].id, quantity=2),
+            OrderItem(order_id=order2.id, product_id=products[2].id, quantity=1),
+            OrderItem(order_id=order2.id, product_id=products[3].id, quantity=1),
+            OrderItem(order_id=order3.id, product_id=products[0].id, quantity=1),
+            OrderItem(order_id=order3.id, product_id=products[2].id, quantity=1),
+            OrderItem(order_id=order4.id, product_id=products[1].id, quantity=1),
+            OrderItem(order_id=order4.id, product_id=products[3].id, quantity=2),
+        ]
+        db.add_all(order_items)
 
         db.commit()
-        print("Базу даних успішно оновлено. Створено 4 акаунти різних ролей та каталог товарів.")
+        print(
+            "Базу даних успішно оновлено. Створено 4 акаунти різних ролей "
+            "(client_andriy, worker_pavlo, admin_denys, superadmin_root), "
+            "каталог товарів та тестові замовлення (включно з Invoiced для /stats)."
+        )
 
     except Exception as e:
         db.rollback()
