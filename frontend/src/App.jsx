@@ -1,12 +1,11 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import LoginView from './components/LoginView.jsx';
 import ClientCatalogView from './components/ClientCatalogView.jsx';
 import EmployeeOrdersView from './components/EmployeeOrdersView.jsx';
 import AdminProductsView from './components/AdminProductsView.jsx';
 import SuperAdminUsersView from './components/SuperAdminUsersView.jsx';
-import { logout, getCurrentUser } from './services/apiService.js';
+import { getCurrentUser, logout } from './services/apiService.js';
 
-// Кожна роль бачить лише свій екран (RBAC на фронтенді).
 const VIEWS_BY_ROLE = {
   client: ClientCatalogView,
   employee: EmployeeOrdersView,
@@ -24,12 +23,19 @@ const ROLE_LABELS = {
 export default function App() {
   const [user, setUser] = useState(getCurrentUser());
 
+  useEffect(() => {
+    function handleExpiredSession() {
+      setUser(null);
+    }
+    window.addEventListener('auth-expired', handleExpiredSession);
+    return () => window.removeEventListener('auth-expired', handleExpiredSession);
+  }, []);
+
   function handleLogout() {
     logout();
     setUser(null);
   }
 
-  // Не увійшли (або роль невідома) — показуємо форму входу.
   if (!user || !VIEWS_BY_ROLE[user.role]) {
     return <LoginView onLogin={setUser} />;
   }
@@ -42,7 +48,7 @@ export default function App() {
         <p className="eyebrow">Пошта · {ROLE_LABELS[user.role]}</p>
         <div className="header-row">
           <h1>{ROLE_LABELS[user.role]}</h1>
-          <div>
+          <div className="account-actions">
             <span className="muted">{user.username}</span>
             <button type="button" onClick={handleLogout}>Вийти</button>
           </div>

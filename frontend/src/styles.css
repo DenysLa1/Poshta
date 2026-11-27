@@ -12,7 +12,7 @@ body {
 }
 
 .app {
-  max-width: 720px;
+  max-width: 900px;
   margin: 0 auto;
   padding: 24px 16px;
 }
@@ -23,7 +23,8 @@ body {
   padding-bottom: 12px;
 }
 
-.header-row {
+.header-row,
+.account-actions {
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -39,7 +40,7 @@ body {
   margin: 0 0 4px;
 }
 
-h1, h2, h3 {
+h1, h2, h3, h4 {
   margin: 8px 0;
 }
 
@@ -56,8 +57,14 @@ h1, h2, h3 {
   color: #0b6e4f;
 }
 
-button {
+button,
+input,
+select,
+textarea {
   font: inherit;
+}
+
+button {
   padding: 6px 14px;
   border: 1px solid #9fb3c8;
   border-radius: 6px;
@@ -65,7 +72,7 @@ button {
   cursor: pointer;
 }
 
-button:hover {
+button:hover:not(:disabled) {
   background: #eef2f6;
 }
 
@@ -74,13 +81,15 @@ button:disabled {
   cursor: default;
 }
 
-input {
-  font: inherit;
+input,
+select,
+textarea {
   padding: 6px 10px;
   margin-top: 4px;
   width: 100%;
   border: 1px solid #9fb3c8;
   border-radius: 6px;
+  background: #fff;
 }
 
 label {
@@ -91,7 +100,7 @@ label {
 /* --- Форма входу --- */
 
 .login-form {
-  max-width: 360px;
+  max-width: 380px;
   margin: 48px auto;
   background: #fff;
   border: 1px solid #d9e2ec;
@@ -112,24 +121,46 @@ label {
   padding: 4px 0;
 }
 
+.demo-hint {
+  font-size: 12px;
+  line-height: 1.6;
+  border-top: 1px solid #eef2f6;
+  padding-top: 12px;
+  margin-top: 16px;
+}
+
 /* --- Замовлення --- */
 
 .order-count {
   color: #52606d;
 }
 
-.order-list {
+.order-list,
+.catalog-list,
+.user-list,
+.product-list,
+.stats-list {
   list-style: none;
   margin: 0;
   padding: 0;
+}
+
+.order-list {
   display: grid;
   gap: 12px;
 }
 
-.order-card {
+.order-card,
+.catalog-item,
+.user-card,
+.data-form,
+.stat-card {
   background: #fff;
   border: 1px solid #d9e2ec;
   border-radius: 8px;
+}
+
+.order-card {
   padding: 16px;
 }
 
@@ -147,14 +178,21 @@ label {
 }
 
 .product-list {
-  margin: 0;
   padding-left: 20px;
+  list-style: disc;
+}
+
+.order-actions,
+.item-actions,
+.search-row,
+.inline-form {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
 }
 
 .order-actions {
-  display: flex;
-  gap: 8px;
-  flex-wrap: wrap;
   margin-top: 12px;
   border-top: 1px solid #eef2f6;
   padding-top: 12px;
@@ -177,23 +215,30 @@ label {
 
 /* --- Каталог та кошик --- */
 
-.catalog-list {
-  list-style: none;
-  margin: 0;
-  padding: 0;
+.catalog-list,
+.user-list {
   display: grid;
   gap: 8px;
 }
 
-.catalog-item {
-  background: #fff;
-  border: 1px solid #d9e2ec;
-  border-radius: 8px;
+.catalog-item,
+.user-card {
   padding: 12px 16px;
   display: flex;
   justify-content: space-between;
   align-items: center;
-  gap: 12px;
+  gap: 16px;
+}
+
+.catalog-product-info,
+.user-details {
+  min-width: 0;
+  flex: 1;
+}
+
+.user-details {
+  display: grid;
+  gap: 3px;
 }
 
 .cart-bar {
@@ -208,4 +253,102 @@ label {
   align-items: center;
   gap: 12px;
   margin-top: 16px;
+}
+
+/* --- Пошук і форми даних --- */
+
+.search-form {
+  margin: 16px 0;
+}
+
+.search-form label {
+  margin-bottom: 4px;
+}
+
+.search-row input {
+  flex: 1;
+  min-width: 180px;
+  margin: 0;
+}
+
+.data-form {
+  padding: 16px;
+  margin: 16px 0;
+}
+
+.data-form label {
+  max-width: 480px;
+}
+
+.inline-form {
+  margin-top: 8px;
+}
+
+.inline-form label {
+  margin: 0;
+  width: 180px;
+}
+
+.danger-button {
+  color: #a61b1b;
+  border-color: #d99;
+}
+
+/* --- Статистика --- */
+
+.stats-section {
+  margin-top: 32px;
+  border-top: 1px solid #d9e2ec;
+  padding-top: 16px;
+}
+
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+  gap: 10px;
+  margin: 12px 0 20px;
+}
+
+.stat-card {
+  padding: 14px;
+  display: grid;
+  gap: 8px;
+}
+
+.stat-card span {
+  color: #52606d;
+  font-size: 14px;
+}
+
+.stat-card strong {
+  font-size: 20px;
+}
+
+.stats-list {
+  display: grid;
+  gap: 6px;
+  margin-bottom: 18px;
+}
+
+.stats-list li {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  background: #fff;
+  border: 1px solid #d9e2ec;
+  border-radius: 6px;
+  padding: 8px 12px;
+}
+
+@media (max-width: 600px) {
+  .catalog-item,
+  .user-card,
+  .cart-bar {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .item-actions {
+    width: 100%;
+  }
 }

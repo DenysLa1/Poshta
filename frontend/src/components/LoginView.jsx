@@ -1,7 +1,6 @@
 import { useState } from 'react';
 import { login, register } from '../services/apiService.js';
 
-// Форма входу та реєстрації клієнта. Після успіху повідомляє App про користувача.
 export default function LoginView({ onLogin }) {
   const [isRegistering, setIsRegistering] = useState(false);
   const [username, setUsername] = useState('');
@@ -11,20 +10,24 @@ export default function LoginView({ onLogin }) {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
 
+  function switchMode() {
+    setIsRegistering((current) => !current);
+    setError('');
+  }
+
   async function handleSubmit(event) {
     event.preventDefault();
     setError('');
 
-    // Бекенд вимагає хоча б один контакт — перевіряємо до запиту.
-    if (isRegistering && !email && !phone) {
+    if (isRegistering && !email.trim() && !phone.trim()) {
       setError('Вкажіть email або номер телефону.');
       return;
     }
 
     setIsLoading(true);
     try {
-      if (isRegistering) await register(username, password, email, phone);
-      const user = await login(username, password);
+      if (isRegistering) await register(username.trim(), password, email.trim(), phone.trim());
+      const user = await login(username.trim(), password);
       onLogin(user);
     } catch (err) {
       setError(err.message || 'Не вдалося увійти.');
@@ -43,6 +46,7 @@ export default function LoginView({ onLogin }) {
           value={username}
           onChange={(event) => setUsername(event.target.value)}
           autoComplete="username"
+          minLength={isRegistering ? 3 : undefined}
           required
         />
       </label>
@@ -54,6 +58,7 @@ export default function LoginView({ onLogin }) {
           value={password}
           onChange={(event) => setPassword(event.target.value)}
           autoComplete={isRegistering ? 'new-password' : 'current-password'}
+          minLength={isRegistering ? 6 : undefined}
           required
         />
       </label>
@@ -69,7 +74,6 @@ export default function LoginView({ onLogin }) {
               autoComplete="email"
             />
           </label>
-
           <label>
             Телефон
             <input
@@ -79,7 +83,6 @@ export default function LoginView({ onLogin }) {
               autoComplete="tel"
             />
           </label>
-
           <p className="muted">Заповніть хоча б одне поле: email або телефон.</p>
         </>
       )}
@@ -87,16 +90,20 @@ export default function LoginView({ onLogin }) {
       <button type="submit" disabled={isLoading}>
         {isLoading ? 'Зачекайте…' : isRegistering ? 'Створити акаунт' : 'Увійти'}
       </button>
-
-      <button
-        type="button"
-        className="link-button"
-        onClick={() => setIsRegistering((current) => !current)}
-      >
+      <button type="button" className="link-button" onClick={switchMode} disabled={isLoading}>
         {isRegistering ? 'У мене вже є акаунт' : 'Зареєструватися'}
       </button>
-
       {error && <p role="alert" className="error">{error}</p>}
+
+      {!isRegistering && (
+        <p className="muted demo-hint">
+          Тестові акаунти з backend/seed.py:<br />
+          client_andriy / client123 — клієнт<br />
+          worker_pavlo / worker123 — працівник<br />
+          admin_denys / admin123 — адміністратор<br />
+          superadmin_root / root123 — головний адмін
+        </p>
+      )}
     </form>
   );
 }

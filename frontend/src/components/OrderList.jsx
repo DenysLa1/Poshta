@@ -1,7 +1,7 @@
 import OrderItem from './OrderItem.jsx';
 
-export default function OrderList({ orders, onStatusChange }) {
-  if (orders.length === 0) return <p>Замовлень поки немає.</p>;
+export default function OrderList({ orders, onStatusChange, updatingOrderId = null }) {
+  if (orders.length === 0) return <p>Замовлень не знайдено.</p>;
 
   return (
     <section aria-label="Список замовлень">
@@ -9,7 +9,11 @@ export default function OrderList({ orders, onStatusChange }) {
       <ul className="order-list">
         {orders.map((order) => (
           <li key={order.id}>
-            <OrderItem order={order} onStatusChange={onStatusChange} />
+            <OrderItem
+              order={order}
+              onStatusChange={onStatusChange}
+              isUpdating={updatingOrderId === order.id}
+            />
           </li>
         ))}
       </ul>

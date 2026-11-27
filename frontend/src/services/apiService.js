@@ -1,57 +1,61 @@
-// 1. Що це: Єдиний сервіс звертань фронтенду до REST API бекенду (FastAPI).
-// 2. Для чого: Виконувати HTTP-запити через fetch і зберігати дані поточного користувача.
-// 3. Призначення: Авторизація, каталог товарів, замовлення, зміна статусів та статистика.
+// REST API сервіс для FastAPI: авторизація, каталог, замовлення, статистика та користувачі.
 
 const TOKEN_KEY = 'token';
 const USER_KEY = 'user';
 
-// Тимчасовий демо-вхід для локальної розробки (поки на бекенді немає /auth/login).
-// Виставте true — і вхід спрацює без бекенда: логін = роль (client, employee,
-// admin, superadmin), пароль будь-який. Перед релізом повернути false!
-const DEMO_LOGIN = false;
-
-// Простий обгорташ навколо fetch: додає JSON-заголовки та токен авторизації.
-// Шляхи відносні — у режимі dev Vite проксіює їх на http://localhost:8000
-// (див. vite.config.js), тому проблем CORS немає.
-async function request(path, method, body) {
-  const headers = { 'Content-Type': 'application/json' };
-
+async function request(path, method = 'GET', body) {
+  const headers = {};
   const token = localStorage.getItem(TOKEN_KEY);
+
+  if (body !== undefined) headers['Content-Type'] = 'application/json';
   if (token) headers.Authorization = 'Bearer ' + token;
 
-  const response = await fetch(path, {
-    method,
-    headers,
-    body: body ? JSON.stringify(body) : undefined,
-  });
-
-  if (!response.ok) {
-    const data = await response.json().catch(() => null);
-    throw new Error(data?.detail || 'Помилка запиту (' + response.status + ')');
+  let response;
+  try {
+    response = await fetch(path, {
+      method,
+      headers,
+      body: body === undefined ? undefined : JSON.stringify(body),
+    });
+  } catch {
+    throw new Error('Не вдалося з’єднатися з сервером. Перевірте, чи запущено бекенд.');
   }
 
-  return response.json();
+  const data = await response.json().catch(() => null);
+
+  if (response.status === 401) {
+    localStorage.removeItem(TOKEN_KEY);
+    localStorage.removeItem(USER_KEY);
+    window.dispatchEvent(new Event('auth-expired'));
+  }
+
+  if (!response.ok) {
+    const detail = data?.detail;
+    const message = Array.isArray(detail)
+      ? detail.map((item) => item.msg).join(', ')
+      : detail;
+    throw new Error(message || 'Помилка запиту (' + response.status + ').');
+  }
+
+  return data;
 }
 
 // --- Авторизація ---
 
 export async function login(username, password) {
-  if (DEMO_LOGIN) {
-    const demoUser = { id: 1, username, role: username };
-    localStorage.setItem(USER_KEY, JSON.stringify(demoUser));
-    return demoUser;
-  }
-
-  // Очікувана відповідь: { token, user: { id, username, role } }
   const data = await request('/login', 'POST', { username, password });
   localStorage.setItem(TOKEN_KEY, data.token);
   localStorage.setItem(USER_KEY, JSON.stringify(data.user));
   return data.user;
 }
 
-// Реєстрація нового клієнта. Бекенд очікує email АБО phone (хоча б одне).
 export async function register(username, password, email, phone) {
-  return request('/register', 'POST', { username, password, email, phone });
+  return request('/register', 'POST', {
+    username,
+    password,
+    email: email || null,
+    phone: phone || null,
+  });
 }
 
 export function logout() {
@@ -69,40 +73,67 @@ export function getCurrentUser() {
 
 // --- Каталог ---
 
-export async function getProducts() {
-  return request('/products', 'GET');
+export function getProducts() {
+  return request('/products');
+}
+
+export function createProduct(product) {
+  return request('/products', 'POST', product);
+}
+
+export function updateProduct(productId, changes) {
+  return request('/products/' + productId, 'PATCH', changes);
+}
+
+export function deleteProduct(productId) {
+  return request('/products/' + productId, 'DELETE');
 }
 
 // --- Замовлення ---
 
-// items: [{ product_id, quantity }]
-export async function createOrder(userId, items) {
+export function createOrder(userId, items) {
   return request('/orders', 'POST', { user_id: userId, items });
 }
 
-export async function getOrders() {
-  const orders = await request('/orders', 'GET');
+export async function getOrders({ search = '', status = '', userId = '' } = {}) {
+  const params = new URLSearchParams();
+  if (search) params.set('search', search);
+  if (status) params.set('status', status);
+  if (userId) params.set('user_id', userId);
 
-  // Перетворюємо відповідь бекенду у формат, який очікують компоненти.
-  // Поки бекенд не повертає імена — показуємо номери (див. Trello, Спринт 2).
-  return orders.map((order) => ({
-    id: order.id,
-    customerName: 'Клієнт #' + order.user_id,
-    status: order.status,
-    products: order.items.map((item) => ({
-      id: item.product_id,
-      name: 'Товар #' + item.product_id,
-      quantity: item.quantity,
-    })),
-  }));
+  const query = params.toString();
+  return request('/orders' + (query ? '?' + query : ''));
 }
 
-export async function updateOrderStatus(orderId, status) {
+export function updateOrderStatus(orderId, status) {
   return request('/orders/' + orderId + '/status', 'PATCH', { status });
 }
 
-// --- Статистика (для адміністратора) ---
+// --- Статистика ---
 
-export async function getStats() {
-  return request('/stats', 'GET');
+export function getStats() {
+  return request('/stats');
+}
+
+// --- Користувачі (superadmin) ---
+
+export function getUsers({ search = '', role = '' } = {}) {
+  const params = new URLSearchParams();
+  if (search) params.set('search', search);
+  if (role) params.set('role', role);
+
+  const query = params.toString();
+  return request('/users' + (query ? '?' + query : ''));
+}
+
+export function createUser(user) {
+  return request('/users', 'POST', user);
+}
+
+export function updateUserRole(userId, role) {
+  return request('/users/' + userId, 'PATCH', { role });
+}
+
+export function deleteUser(userId) {
+  return request('/users/' + userId, 'DELETE');
 }
